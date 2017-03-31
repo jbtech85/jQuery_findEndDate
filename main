@@ -1,0 +1,85 @@
+// note, I'm setting up a JS array to know the month duraction for the selected commission package
+
+<?php
+
+    // get all the commission package durations on load to make for quick calculations
+    $SQLQuery = "SELECT CommissionPK,MonthDuration FROM commission WHERE isDel = 0";
+    include $applicationRoot . 'SQLQuery.php';
+
+    echo "<script>var commDuration = [];";
+    while($row = mysql_fetch_array($result)){
+        echo "commDuration[{$row['CommissionPK']}] = {$row['MonthDuration']}";
+    }
+    echo "</script>";
+
+?>
+
+
+<script>
+    // when the user changes the commission
+    $('#CommissionFK').change(function(){
+        calcEndDate();
+    });
+
+    // when the user changes the start date
+    $('.calTable').live('click',function(){
+        // wait a tenth of a second to make sure the value is loaded
+        calcEndDate();
+    });
+
+
+    function calcEndDate() {
+        // if we have a start date and commission, calculate the end date
+        if($('#StartDate').val().length == 10 && $('#CommissionFK').val() != ''){
+            // set our variables
+            var monthCount = commDuration[$('#CommissionFK').val()];
+            var startDate = $('#StartDate').val();
+            var startYear = startDate.substr(6,10);
+            var startMonth = startDate.substr(0,2);
+            var startDay = startDate.substr(3,2);
+
+            // make sure we have a valid date
+            if(parseInt(startMonth) > 0 && parseInt(startMonth) <= 12 && startDate.substr(2,1) == '/' &&
+            parseInt(startDay) > 0 && parseInt(startDay) < 31 && startDate.substr(5,1) == '/' &&
+            parseInt(startYear) > 1970 && parseInt(startYear) < 2037) {
+                // if we have a year or more's worth of months
+                if(monthCount >= 12){
+                    // set the new year to be current plus however many years we have (15 would be 1, 27 would be 2, etc)
+                    var newYear = parseInt(startYear) + Math.floor(monthCount/12);
+                    // update our startDate var
+                    startDate = startDate.replace(startYear,newYear);
+                    // now reduce monthCount by the number of months for years we added
+                    monthCount -= Math.floor(monthCount/12) * 12;
+                    // and update the startYear variable for further calculations
+                    startYear = newYear;
+                }
+
+                // now that we've removed any years, and are down to months
+                var newMonth = 0;
+
+                // if our month count pushes us into the next year
+                if((parseInt(startMonth) + monthCount) > 12){
+                    // automatically add 1 year (we'll never have more than 11 months at this point)
+                    startDate = startDate.replace(startYear,(parseInt(startYear) + 1));
+                    // for example, 11 - (12 - 3) would give us 2 (three months from november is february)
+                    newMonth = parseInt(startMonth) - (12 - monthCount);
+                } else {
+                    // otherwise, just increase our start month by the month count
+                    newMonth = parseInt(startMonth) + monthCount;
+                }
+
+                // add a leading 0 as necessary
+                if(newMonth < 10){
+                    newMonth = "0" + newMonth;
+                }
+
+                startDate = startDate.replace(startMonth,newMonth);
+
+                // now that we've calculated the end date, update the value
+                $('#EndDate').val(startDate);
+            }
+        }
+    }
+
+
+</script>
